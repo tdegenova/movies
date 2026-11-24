@@ -29,3 +29,68 @@ ggplot(movies, aes(x = tomatoMeter)) +
     y = "Count"
   )
 ```
+
+```{r}
+movies_gap <- movies_clean |> 
+  filter(tomatoMeter != 0, audienceScore != 0) |> 
+  mutate(gap = tomatoMeter - audienceScore)
+
+movies_summary <- movies_gap |> 
+  group_by(genre) |> 
+  summarize(
+    mean_gap = mean(gap, na.rm = TRUE),
+    n = n()
+  ) |> 
+  filter(n >= 100) |> 
+  arrange(mean_gap)
+
+ggplot(movies_summary, aes(x = mean_gap, y = fct_reorder(genre, mean_gap))) +
+  geom_col(fill = "steelblue") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Critic vs. Audience Rating Gap by Movie Genre",
+    subtitle = "Positive values indicate higher critic scores; negative values indicate higher audience scores",
+    x = "Average Gap (Tomatometer - Audience Score)",
+    y = "Genre"
+  )
+```
+
+```{r}
+spiderman_titles <- c(
+  "Spider-Man", "Spider-Man 2", "Spider-Man 3",
+  "The Amazing Spider-Man", "The Amazing Spider-Man 2",
+  "Spider-Man: Homecoming", "Spider-Man: Far From Home", "Spider-Man: No Way Home"
+)
+
+spiderman <- movies |> 
+  filter(title %in% spiderman_titles) |> 
+  mutate(actor = case_when(
+    str_detect(title, "Amazing") ~ "Andrew Garfield",
+    str_detect(title, ":") ~ "Tom Holland",
+    .default = "Tobey Maguire"
+  )) |> 
+  arrange(releaseDateTheaters)
+
+spiderman |> 
+  pivot_longer(
+    cols = c(tomatoMeter, audienceScore),
+    names_to = "score_type",
+    values_to = "score"
+  ) |> 
+  mutate(
+    score_type = if_else(score_type == "tomatoMeter", "Tomatometer (Critics)", "Audience Score"),
+    title = fct_inorder(title)
+  ) |> 
+  ggplot(aes(x = title, y = score, color = score_type, group = score_type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_y_continuous(limits = c(40, 100)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Spider-Man Ratings Dipped Mid-Franchise Before Rebounding with Tom Holland",
+    subtitle = "Scores for the eight live-action Spider-Man films in release order",
+    x = NULL,
+    y = "Score",
+    color = "Score Type"
+  )
+```
